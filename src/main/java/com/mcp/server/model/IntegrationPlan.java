@@ -23,15 +23,3 @@ public class IntegrationPlan {
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
 }
-
-/**
- * Plan status enumeration
- */
-public enum PlanStatus {
-    CREATED,
-    UPDATED,
-    EXECUTING,
-    COMPLETED,
-    EXPIRED,
-    ERROR
-}

@@ -382,39 +382,39 @@ public class ExecutionService {
 
     private String generateApplicationYaml() {
         return """
-            spring:
-              datasource:
-                url: jdbc:postgresql://localhost:5432/mydb
-                username: ${DB_USERNAME:postgres}
-                password: ${DB_PASSWORD:password}
-                driver-class-name: org.postgresql.Driver
-              jpa:
-                hibernate:
-                  ddl-auto: update
-                properties:
-                  hibernate:
-                    dialect: org.hibernate.dialect.PostgreSQLDialect
-                    format_sql: true
-                show-sql: false
-              """;
+                spring:
+                  datasource:
+                    url: jdbc:postgresql://localhost:5432/mydb
+                    username: ${DB_USERNAME:postgres}
+                    password: ${DB_PASSWORD:password}
+                    driver-class-name: org.postgresql.Driver
+                  jpa:
+                    hibernate:
+                      ddl-auto: update
+                    properties:
+                      hibernate:
+                        dialect: org.hibernate.dialect.PostgreSQLDialect
+                        format_sql: true
+                    show-sql: false
+                """;
     }
 
     private String generatePomDependencies() {
         return """
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-data-jpa</artifactId>
-            </dependency>
-            <dependency>
-                <groupId>org.postgresql</groupId>
-                <artifactId>postgresql</artifactId>
-                <scope>runtime</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-validation</artifactId>
-            </dependency>
-            """;
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-data-jpa</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.postgresql</groupId>
+                    <artifactId>postgresql</artifactId>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-validation</artifactId>
+                </dependency>
+                """;
     }
 
     private String toPascalCase(String input) {
@@ -446,3 +446,4 @@ public class ExecutionService {
     private String generateExecutionId() {
         return "exec_" + UUID.randomUUID().toString().substring(0, 8) + "_" + System.currentTimeMillis();
     }
+}

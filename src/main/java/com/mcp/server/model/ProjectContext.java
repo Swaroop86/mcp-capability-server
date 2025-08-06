@@ -26,27 +26,3 @@ public class ProjectContext {
     private List<Dependency> dependencies;
     private Map<String, Boolean> features;
 }
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class PackageStructure {
-    private String entityPackage;
-    private String repositoryPackage;
-    private String servicePackage;
-    private String controllerPackage;
-    private String dtoPackage;
-    private String configPackage;
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class Dependency {
-    private String groupId;
-    private String artifactId;
-    private String version;
-    private String scope;
-}

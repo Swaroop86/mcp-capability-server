@@ -1,6 +1,8 @@
 package com.mcp.server.service;
 
 import com.mcp.server.model.ProjectContext;
+import com.mcp.server.model.Dependency;
+import com.mcp.server.model.PackageStructure;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.w3c.dom.Document;
@@ -13,7 +15,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Service for analyzing project structure and configuration
@@ -37,28 +38,28 @@ public class ProjectAnalyzer {
         // Detect build tool
         String buildTool = detectBuildTool(path);
 
-        // Parse project configuration
-        ProjectContext.ProjectContextBuilder contextBuilder = ProjectContext.builder()
-                .projectPath(projectPath)
-                .buildTool(buildTool);
+        // Create project context builder
+        ProjectContext context = new ProjectContext();
+        context.setProjectPath(projectPath);
+        context.setBuildTool(buildTool);
 
         if ("Maven".equals(buildTool)) {
-            analyzeMavenProject(path, contextBuilder);
+            analyzeMavenProject(path, context);
         } else if ("Gradle".equals(buildTool)) {
-            analyzeGradleProject(path, contextBuilder);
+            analyzeGradleProject(path, context);
         } else {
             // Default values for unknown project
-            setDefaultValues(contextBuilder);
+            setDefaultValues(context);
         }
 
         // Detect package structure
-        detectPackageStructure(path, contextBuilder);
+        detectPackageStructure(path, context);
 
         // Detect features
         Map<String, Boolean> features = detectFeatures(path);
-        contextBuilder.features(features);
+        context.setFeatures(features);
 
-        return contextBuilder.build();
+        return context;
     }
 
     /**
@@ -77,11 +78,11 @@ public class ProjectAnalyzer {
     /**
      * Analyze Maven project
      */
-    private void analyzeMavenProject(Path projectPath, ProjectContext.ProjectContextBuilder builder) {
+    private void analyzeMavenProject(Path projectPath, ProjectContext context) {
         try {
             File pomFile = projectPath.resolve("pom.xml").toFile();
             if (!pomFile.exists()) {
-                setDefaultValues(builder);
+                setDefaultValues(context);
                 return;
             }
 
@@ -98,21 +99,21 @@ public class ProjectAnalyzer {
             if (javaVersion == null) {
                 javaVersion = "17"; // Default
             }
-            builder.language("Java");
-            builder.languageVersion(javaVersion);
+            context.setLanguage("Java");
+            context.setLanguageVersion(javaVersion);
 
             // Get group ID as base package
             String groupId = getXmlValue(doc, "groupId");
             String artifactId = getXmlValue(doc, "artifactId");
             if (groupId != null) {
-                builder.basePackage(groupId + (artifactId != null ? "." + artifactId.replace("-", "") : ""));
+                context.setBasePackage(groupId + (artifactId != null ? "." + artifactId.replace("-", "") : ""));
             } else {
-                builder.basePackage("com.example");
+                context.setBasePackage("com.example");
             }
 
             // Detect Spring Boot
             NodeList dependencies = doc.getElementsByTagName("dependency");
-            List<ProjectContext.Dependency> projectDeps = new ArrayList<>();
+            List<Dependency> projectDeps = new ArrayList<>();
             boolean isSpringBoot = false;
             String springBootVersion = "3.2.0"; // Default
 
@@ -129,30 +130,30 @@ public class ProjectAnalyzer {
                     }
                 }
 
-                projectDeps.add(ProjectContext.Dependency.builder()
-                        .groupId(depGroupId)
-                        .artifactId(depArtifactId)
-                        .version(depVersion)
-                        .build());
+                Dependency dependency = new Dependency();
+                dependency.setGroupId(depGroupId);
+                dependency.setArtifactId(depArtifactId);
+                dependency.setVersion(depVersion);
+                projectDeps.add(dependency);
             }
 
             if (isSpringBoot) {
-                builder.framework("Spring Boot");
-                builder.frameworkVersion(springBootVersion);
+                context.setFramework("Spring Boot");
+                context.setFrameworkVersion(springBootVersion);
             }
 
-            builder.dependencies(projectDeps);
+            context.setDependencies(projectDeps);
 
         } catch (Exception e) {
             log.error("Error analyzing Maven project: ", e);
-            setDefaultValues(builder);
+            setDefaultValues(context);
         }
     }
 
     /**
      * Analyze Gradle project
      */
-    private void analyzeGradleProject(Path projectPath, ProjectContext.ProjectContextBuilder builder) {
+    private void analyzeGradleProject(Path projectPath, ProjectContext context) {
         // Simplified Gradle analysis
         try {
             Path buildFile = projectPath.resolve("build.gradle");
@@ -168,99 +169,114 @@ public class ProjectAnalyzer {
                         .anyMatch(line -> line.contains("org.springframework.boot"));
 
                 if (isSpringBoot) {
-                    builder.framework("Spring Boot");
-                    builder.frameworkVersion("3.2.0"); // Default version
+                    context.setFramework("Spring Boot");
+                    context.setFrameworkVersion("3.2.0"); // Default version
                 }
 
                 // Detect Java version
                 String javaVersion = lines.stream()
                         .filter(line -> line.contains("sourceCompatibility") || line.contains("targetCompatibility"))
                         .findFirst()
-                        .map(line -> extractVersion(line))
+                        .map(this::extractVersion)
                         .orElse("17");
 
-                builder.language("Java");
-                builder.languageVersion(javaVersion);
-                builder.basePackage("com.example");
+                context.setLanguage("Java");
+                context.setLanguageVersion(javaVersion);
+                context.setBasePackage("com.example");
             }
         } catch (Exception e) {
             log.error("Error analyzing Gradle project: ", e);
-            setDefaultValues(builder);
+            setDefaultValues(context);
         }
     }
 
     /**
      * Set default values
      */
-    private void setDefaultValues(ProjectContext.ProjectContextBuilder builder) {
-        builder.language("Java");
-        builder.languageVersion("17");
-        builder.framework("Spring Boot");
-        builder.frameworkVersion("3.2.0");
-        builder.basePackage("com.example");
-        builder.dependencies(new ArrayList<>());
+    private void setDefaultValues(ProjectContext context) {
+        context.setLanguage("Java");
+        context.setLanguageVersion("17");
+        context.setFramework("Spring Boot");
+        context.setFrameworkVersion("3.2.0");
+        context.setBasePackage("com.example");
+        context.setDependencies(new ArrayList<>());
     }
 
     /**
      * Detect package structure
      */
-    private void detectPackageStructure(Path projectPath, ProjectContext.ProjectContextBuilder builder) {
+    private void detectPackageStructure(Path projectPath, ProjectContext context) {
         Path srcPath = projectPath.resolve("src/main/java");
 
-        ProjectContext.PackageStructure.PackageStructureBuilder structureBuilder =
-                ProjectContext.PackageStructure.builder();
+        PackageStructure packageStructure = new PackageStructure();
 
         if (Files.exists(srcPath)) {
             try {
                 // Find base package directory
-                String basePackage = builder.build().getBasePackage();
+                String basePackage = context.getBasePackage();
                 if (basePackage != null) {
                     Path basePath = srcPath.resolve(basePackage.replace('.', '/'));
 
                     if (Files.exists(basePath)) {
                         // Check for common package names
-                        structureBuilder.entityPackage(
+                        packageStructure.setEntityPackage(
                                 Files.exists(basePath.resolve("entity")) ? basePackage + ".entity" :
                                         Files.exists(basePath.resolve("model")) ? basePackage + ".model" :
                                                 basePackage + ".entity"
                         );
 
-                        structureBuilder.repositoryPackage(
+                        packageStructure.setRepositoryPackage(
                                 Files.exists(basePath.resolve("repository")) ? basePackage + ".repository" :
                                         Files.exists(basePath.resolve("repo")) ? basePackage + ".repo" :
                                                 basePackage + ".repository"
                         );
 
-                        structureBuilder.servicePackage(
+                        packageStructure.setServicePackage(
                                 Files.exists(basePath.resolve("service")) ? basePackage + ".service" :
                                         basePackage + ".service"
                         );
 
-                        structureBuilder.controllerPackage(
+                        packageStructure.setControllerPackage(
                                 Files.exists(basePath.resolve("controller")) ? basePackage + ".controller" :
                                         Files.exists(basePath.resolve("web")) ? basePackage + ".web" :
                                                 Files.exists(basePath.resolve("rest")) ? basePackage + ".rest" :
                                                         basePackage + ".controller"
                         );
 
-                        structureBuilder.dtoPackage(
+                        packageStructure.setDtoPackage(
                                 Files.exists(basePath.resolve("dto")) ? basePackage + ".dto" :
                                         basePackage + ".dto"
                         );
 
-                        structureBuilder.configPackage(
+                        packageStructure.setConfigPackage(
                                 Files.exists(basePath.resolve("config")) ? basePackage + ".config" :
                                         Files.exists(basePath.resolve("configuration")) ? basePackage + ".configuration" :
                                                 basePackage + ".config"
                         );
+                    } else {
+                        // Set default package structure
+                        packageStructure.setEntityPackage(basePackage + ".entity");
+                        packageStructure.setRepositoryPackage(basePackage + ".repository");
+                        packageStructure.setServicePackage(basePackage + ".service");
+                        packageStructure.setControllerPackage(basePackage + ".controller");
+                        packageStructure.setDtoPackage(basePackage + ".dto");
+                        packageStructure.setConfigPackage(basePackage + ".config");
                     }
                 }
             } catch (Exception e) {
                 log.error("Error detecting package structure: ", e);
+                // Set defaults if error occurs
+                String basePackage = context.getBasePackage();
+                packageStructure.setEntityPackage(basePackage + ".entity");
+                packageStructure.setRepositoryPackage(basePackage + ".repository");
+                packageStructure.setServicePackage(basePackage + ".service");
+                packageStructure.setControllerPackage(basePackage + ".controller");
+                packageStructure.setDtoPackage(basePackage + ".dto");
+                packageStructure.setConfigPackage(basePackage + ".config");
             }
         }
 
-        builder.packageStructure(structureBuilder.build());
+        context.setPackageStructure(packageStructure);
     }
 
     /**

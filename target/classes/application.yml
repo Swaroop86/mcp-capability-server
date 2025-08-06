@@ -1,0 +1,76 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /mcp
+
+spring:
+  application:
+    name: mcp-server-postgresql
+
+  # Cache configuration
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=100,expireAfterWrite=10m
+    cache-names:
+      - plans
+      - templates
+      - sdk-configs
+
+  # Jackson configuration
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+    deserialization:
+      fail-on-unknown-properties: false
+
+  # Freemarker configuration
+  freemarker:
+    template-loader-path: classpath:/templates/
+    charset: UTF-8
+    cache: true
+    suffix: .ftl
+
+# MCP Server Configuration
+mcp:
+  server:
+    name: "PostgreSQL Integration MCP Server"
+    version: "1.0.0"
+    capabilities:
+      - postgresql
+      - database-integration
+      - code-generation
+
+  sdk:
+    base-path: /opt/mcp-resources/sdk-repositories
+    cache-enabled: true
+    default-sdk: postgresql-java-sdk
+
+  standards:
+    base-path: /opt/mcp-resources/coding-standards
+    default-standard: java-spring-boot
+
+  generation:
+    default-package: com.example
+    use-lombok: true
+    include-validation: true
+    include-tests: false
+    naming-strategy: snake_case
+
+  plan:
+    expiration-minutes: 10
+    max-cached-plans: 100
+
+# Logging configuration
+logging:
+  level:
+    com.mcp: DEBUG
+    org.springframework.web: INFO
+    org.springframework.cache: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/mcp-server.log

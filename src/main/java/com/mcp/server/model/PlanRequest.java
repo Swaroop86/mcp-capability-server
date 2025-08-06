@@ -20,12 +20,3 @@ public class PlanRequest {
 
     private Map<String, Object> preferences;
 }
-
-/**
- * Project information
- */
-@Data
-class ProjectInfo {
-    private String path;
-    private String description;
-}
