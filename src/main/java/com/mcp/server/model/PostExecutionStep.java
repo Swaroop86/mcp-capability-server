@@ -15,4 +15,15 @@ public class PostExecutionStep {
     private String description;
     private boolean required;
     private String resource;
+
+    @Override
+    public String toString() {
+        return "PostExecutionStep{" +
+                "step=" + step +
+                ", action='" + action + '\'' +
+                ", description='" + description + '\'' +
+                ", required=" + required +
+                ", resource='" + resource + '\'' +
+                '}';
+    }
 }

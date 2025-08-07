@@ -19,4 +19,15 @@ public class GeneratedFile {
     private String content;
     private int size; // lines of code
     private Map<String, Object> changes; // for modified files
+
+    @Override
+    public String toString() {
+        return "GeneratedFile{" +
+                "path='" + path + '\'' +
+                ", action='" + action + '\'' +
+                ", content='" + content + '\'' +
+                ", size=" + size +
+                ", changes=" + changes +
+                '}';
+    }
 }

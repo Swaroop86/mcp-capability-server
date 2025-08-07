@@ -24,4 +24,19 @@ public class ExecutionResponse {
     private ValidationResult validation;
     private ExecutionMetadata metadata;
     private Map<String, Object> error;
+
+    @Override
+    public String toString() {
+        return "ExecutionResponse{" +
+                "executionId='" + executionId + '\'' +
+                ", planId='" + planId + '\'' +
+                ", status='" + status + '\'' +
+                ", summary=" + summary +
+                ", generatedFiles=" + generatedFiles +
+                ", postExecutionSteps=" + postExecutionSteps +
+                ", validation=" + validation +
+                ", metadata=" + metadata +
+                ", error=" + error +
+                '}';
+    }
 }

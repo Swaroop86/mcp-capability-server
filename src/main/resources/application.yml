@@ -7,15 +7,17 @@ spring:
   application:
     name: mcp-server-postgresql
 
-  # Cache configuration
+  # Cache configuration with extended expiration
   cache:
     type: caffeine
     caffeine:
-      spec: maximumSize=100,expireAfterWrite=10m
+      spec: maximumSize=1000,expireAfterWrite=120m
     cache-names:
       - plans
       - templates
       - sdk-configs
+      - project-context
+      - standards
 
   # Jackson configuration
   jackson:
@@ -60,17 +62,33 @@ mcp:
     naming-strategy: snake_case
 
   plan:
-    expiration-minutes: 10
-    max-cached-plans: 100
+    expiration-minutes: 120  # Extended to 2 hours
+    max-cached-plans: 1000
 
-# Logging configuration
+# Logging configuration with enhanced debugging
 logging:
   level:
+    root: INFO
     com.mcp: DEBUG
-    org.springframework.web: INFO
+    com.mcp.server.controller: TRACE
+    com.mcp.server.service: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.web.filter.CommonsRequestLoggingFilter: DEBUG
     org.springframework.cache: DEBUG
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/mcp-server.log
+    max-size: 10MB
+    max-history: 10
+
+# Enable actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,caches
+  endpoint:
+    health:
+      show-details: always

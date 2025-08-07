@@ -13,4 +13,12 @@ import lombok.AllArgsConstructor;
 public class FileCategory {
     private String category;
     private List<GeneratedFile> files;
+
+    @Override
+    public String toString() {
+        return "FileCategory{" +
+                "category='" + category + '\'' +
+                ", files=" + files +
+                '}';
+    }
 }

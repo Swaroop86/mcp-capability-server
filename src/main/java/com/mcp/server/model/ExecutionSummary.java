@@ -15,4 +15,15 @@ public class ExecutionSummary {
     private int filesModified;
     private int dependenciesAdded;
     private int totalLinesOfCode;
+
+    @Override
+    public String toString() {
+        return "ExecutionSummary{" +
+                "tablesProcessed=" + tablesProcessed +
+                ", filesGenerated=" + filesGenerated +
+                ", filesModified=" + filesModified +
+                ", dependenciesAdded=" + dependenciesAdded +
+                ", totalLinesOfCode=" + totalLinesOfCode +
+                '}';
+    }
 }

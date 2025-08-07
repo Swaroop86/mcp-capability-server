@@ -1,5 +1,6 @@
 package com.mcp.server.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mcp.server.model.*;
 import com.mcp.server.service.PlanService;
 import com.mcp.server.service.ExecutionService;
@@ -7,36 +8,51 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.ModelAttribute;
 
+import java.time.LocalDateTime;
+import java.util.Enumeration;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
- * MCP REST Controller
- * Handles plan creation and execution requests from Cursor IDE
+ * MCP REST Controller with enhanced logging for debugging
  */
 @RestController
 @RequestMapping("/")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*") // Allow Cursor IDE to connect
+@CrossOrigin(origins = "*", maxAge = 3600)
 public class McpController {
 
     private final PlanService planService;
     private final ExecutionService executionService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    // Add these fields to the class
+    private final AtomicLong requestCounter = new AtomicLong(0);
+    private final Map<String, Long> requestTracker = new ConcurrentHashMap<>();
 
     /**
      * Health check endpoint
      */
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
-        return ResponseEntity.ok(Map.of(
+        Map<String, Object> health = Map.of(
                 "status", "UP",
                 "service", "MCP Server PostgreSQL",
                 "version", "1.0.0",
-                "timestamp", System.currentTimeMillis()
-        ));
+                "timestamp", System.currentTimeMillis(),
+                "serverTime", LocalDateTime.now().toString()
+        );
+        log.debug("Health check response: {}", health);
+        return ResponseEntity.ok(health);
     }
 
     /**
@@ -44,30 +60,58 @@ public class McpController {
      */
     @GetMapping("/capabilities")
     public ResponseEntity<Map<String, Object>> getCapabilities() {
-        return ResponseEntity.ok(Map.of(
+        Map<String, Object> capabilities = Map.of(
                 "server", "MCP PostgreSQL Integration Server",
                 "version", "1.0.0",
                 "capabilities", new String[]{"postgresql", "database-integration", "code-generation"},
                 "supportedFrameworks", new String[]{"spring-boot"},
-                "supportedLanguages", new String[]{"java"}
-        ));
+                "supportedLanguages", new String[]{"java"},
+                "features", Map.of(
+                        "lombok", true,
+                        "validation", true,
+                        "auditing", true,
+                        "softDelete", true
+                )
+        );
+        log.debug("Capabilities response: {}", capabilities);
+        return ResponseEntity.ok(capabilities);
     }
 
     /**
      * Phase 1: Create integration plan
-     * Analyzes project and creates a plan for PostgreSQL integration
      */
-    @PostMapping("/plan/create")
-    public ResponseEntity<PlanResponse> createPlan(@Valid @RequestBody PlanRequest request) {
-        log.info("Creating integration plan for capability: {}", request.getCapability());
-        log.debug("Request details: {}", request);
+    @PostMapping(value = "/plan/create",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PlanResponse> createPlan(
+            @Valid @RequestBody PlanRequest request,
+            HttpServletRequest httpRequest) {
+
+        String adapterRequestId = httpRequest.getHeader("X-Adapter-Request-ID");
+        Long serverRequestNum = requestTracker.get(adapterRequestId);
 
         try {
+            log.info("╔═══════════════════════════════════════════════════════════════╗");
+            log.info("║ PLAN CREATE - Server Request #{} / Adapter Request #{}        ║",
+                    serverRequestNum, adapterRequestId);
+            log.info("╠═══════════════════════════════════════════════════════════════╣");
+            log.info("║ Request Body:                                                 ║");
+            log.info("║ {}", objectMapper.writeValueAsString(request));
+            log.info("╚═══════════════════════════════════════════════════════════════╝");
+
             PlanResponse response = planService.createPlan(request);
-            log.info("Successfully created plan with ID: {}", response.getPlanId());
+
+            log.info("╔═══════════════════════════════════════════════════════════════╗");
+            log.info("║ PLAN CREATE RESPONSE - Request #{}                            ║", serverRequestNum);
+            log.info("╠═══════════════════════════════════════════════════════════════╣");
+            log.info("║ Plan ID: {}                                                   ║", response.getPlanId());
+            log.info("║ Status: {}                                                    ║", response.getStatus());
+            log.info("╚═══════════════════════════════════════════════════════════════╝");
+
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
-            log.error("Error creating plan: ", e);
+            log.error("❌ Error in request #{}: {}", serverRequestNum, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(createErrorPlanResponse(e.getMessage()));
         }
@@ -78,17 +122,25 @@ public class McpController {
      */
     @GetMapping("/plan/{planId}")
     public ResponseEntity<PlanResponse> getPlan(@PathVariable String planId) {
-        log.info("Retrieving plan: {}", planId);
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
 
         try {
+            log.info("=== GET PLAN REQUEST [{}] ===", requestId);
+            log.info("Plan ID [{}]: {}", requestId, planId);
+
             PlanResponse response = planService.getPlan(planId);
+
             if (response != null) {
+                log.info("Plan found [{}]: {}", requestId, planId);
+                log.debug("Plan details [{}]: {}", requestId,
+                        objectMapper.writeValueAsString(response));
                 return ResponseEntity.ok(response);
             } else {
+                log.warn("Plan not found [{}]: {}", requestId, planId);
                 return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
-            log.error("Error retrieving plan: ", e);
+            log.error("Error retrieving plan [{}]: {}", requestId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -98,14 +150,18 @@ public class McpController {
      */
     @PostMapping("/plan/update")
     public ResponseEntity<PlanResponse> updatePlan(@RequestBody Map<String, Object> updateRequest) {
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
         String planId = (String) updateRequest.get("planId");
-        log.info("Updating plan: {}", planId);
+
+        log.info("=== UPDATE PLAN REQUEST [{}] ===", requestId);
+        log.info("Plan ID [{}]: {}", requestId, planId);
 
         try {
             PlanResponse response = planService.updatePlan(planId, updateRequest);
+            log.info("Plan updated [{}]: {}", requestId, response.getPlanId());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("Error updating plan: ", e);
+            log.error("Error updating plan [{}]: {}", requestId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(createErrorPlanResponse(e.getMessage()));
         }
@@ -113,41 +169,72 @@ public class McpController {
 
     /**
      * Phase 2: Execute plan with schema
-     * Generates code based on the plan and provided schema
      */
-    @PostMapping("/plan/execute")
-    public ResponseEntity<ExecutionResponse> executePlan(@Valid @RequestBody ExecutionRequest request) {
-        log.info("Executing plan: {} with {} tables",
-                request.getPlanId(),
-                request.getSchema() != null ? request.getSchema().getTables().size() : 0);
-        log.debug("Execution request: {}", request);
+    @PostMapping(value = "/plan/execute",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ExecutionResponse> executePlan(
+            @Valid @RequestBody ExecutionRequest request,
+            HttpServletRequest httpRequest) {
+
+        String adapterRequestId = httpRequest.getHeader("X-Adapter-Request-ID");
+        Long serverRequestNum = requestTracker.get(adapterRequestId);
 
         try {
+            log.info("╔═══════════════════════════════════════════════════════════════╗");
+            log.info("║ PLAN EXECUTE - Server Request #{} / Adapter Request #{}       ║",
+                    serverRequestNum, adapterRequestId);
+            log.info("╠═══════════════════════════════════════════════════════════════╣");
+            log.info("║ Plan ID: {}                                                   ║", request.getPlanId());
+            log.info("║ Tables: {}                                                    ║",
+                    request.getSchema().getTables().stream()
+                            .map(Table::getName)
+                            .collect(Collectors.joining(", ")));
+            log.info("╚═══════════════════════════════════════════════════════════════╝");
+
             ExecutionResponse response = executionService.executePlan(request);
-            log.info("Successfully executed plan: {}, generated {} files",
-                    request.getPlanId(), response.getSummary().getFilesGenerated());
+
+            log.info("╔═══════════════════════════════════════════════════════════════╗");
+            log.info("║ PLAN EXECUTE RESPONSE - Request #{}                           ║", serverRequestNum);
+            log.info("╠═══════════════════════════════════════════════════════════════╣");
+            log.info("║ Execution ID: {}                                              ║", response.getExecutionId());
+            log.info("║ Files Generated: {}                                           ║",
+                    response.getSummary().getFilesGenerated());
+            log.info("╚═══════════════════════════════════════════════════════════════╝");
+            log.info("║ File names Generated: {}                                           ║",
+                    response.getGeneratedFiles());
+            log.info("╚═══════════════════════════════════════════════════════════════╝");
+
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
-            log.error("Error executing plan: ", e);
+            log.error("❌ Error in request #{}: {}", serverRequestNum, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(createErrorExecutionResponse(e.getMessage()));
         }
     }
 
     /**
-     * Quick setup - combined plan and execute for simple cases
+     * Quick setup - combined plan and execute
      */
     @PostMapping("/quick-setup")
     public ResponseEntity<ExecutionResponse> quickSetup(@RequestBody Map<String, Object> quickRequest) {
-        log.info("Quick setup requested");
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        log.info("=== QUICK SETUP REQUEST [{}] ===", requestId);
 
         try {
             // Create plan
             PlanRequest planRequest = new PlanRequest();
-            planRequest.setCapability((String) quickRequest.get("capability"));
-            planRequest.setProjectInfo((ProjectInfo) quickRequest.get("projectInfo"));
+            planRequest.setCapability((String) quickRequest.getOrDefault("capability", "postgresql"));
+
+            // Set project info
+            ProjectInfo projectInfo = new ProjectInfo();
+            projectInfo.setPath((String) quickRequest.getOrDefault("path", "."));
+            projectInfo.setDescription((String) quickRequest.getOrDefault("description", "Quick setup"));
+            planRequest.setProjectInfo(projectInfo);
 
             PlanResponse plan = planService.createPlan(planRequest);
+            log.info("Quick setup plan created [{}]: {}", requestId, plan.getPlanId());
 
             // Execute immediately
             ExecutionRequest execRequest = new ExecutionRequest();
@@ -155,9 +242,11 @@ public class McpController {
             execRequest.setSchema(convertToSchema(quickRequest.get("schema")));
 
             ExecutionResponse response = executionService.executePlan(execRequest);
+            log.info("Quick setup completed [{}]", requestId);
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("Error in quick setup: ", e);
+            log.error("Error in quick setup [{}]: {}", requestId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(createErrorExecutionResponse(e.getMessage()));
         }
@@ -168,21 +257,25 @@ public class McpController {
      */
     @DeleteMapping("/plan/{planId}")
     public ResponseEntity<Map<String, Object>> deletePlan(@PathVariable String planId) {
-        log.info("Deleting plan: {}", planId);
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
+        log.info("=== DELETE PLAN REQUEST [{}] ===", requestId);
+        log.info("Plan ID [{}]: {}", requestId, planId);
 
         try {
             boolean deleted = planService.deletePlan(planId);
             if (deleted) {
+                log.info("Plan deleted [{}]: {}", requestId, planId);
                 return ResponseEntity.ok(Map.of(
                         "status", "success",
                         "message", "Plan deleted successfully",
                         "planId", planId
                 ));
             } else {
+                log.warn("Plan not found for deletion [{}]: {}", requestId, planId);
                 return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
-            log.error("Error deleting plan: ", e);
+            log.error("Error deleting plan [{}]: {}", requestId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -209,8 +302,36 @@ public class McpController {
     }
 
     private DatabaseSchema convertToSchema(Object schemaObj) {
-        // Convert the schema object from the quick request
-        // This would use Jackson ObjectMapper in a real implementation
-        return new DatabaseSchema();
+        try {
+            return objectMapper.convertValue(schemaObj, DatabaseSchema.class);
+        } catch (Exception e) {
+            log.error("Error converting schema: ", e);
+            return new DatabaseSchema();
+        }
+    }
+
+    @ModelAttribute
+    public void logRequestDetails(HttpServletRequest request) {
+        long requestNumber = requestCounter.incrementAndGet();
+        String requestId = request.getHeader("X-Adapter-Request-ID");
+
+        if (requestId != null) {
+            requestTracker.put(requestId, requestNumber);
+        }
+
+        log.info("════════════════════════════════════════════════════════════════");
+        log.info("MCP SERVER REQUEST #{} [Adapter Request ID: {}]", requestNumber, requestId);
+        log.info("────────────────────────────────────────────────────────────────");
+        log.info("Time: {}", LocalDateTime.now());
+        log.info("Method: {} {}", request.getMethod(), request.getRequestURI());
+        log.info("Remote: {} ({})", request.getRemoteAddr(), request.getRemoteHost());
+        log.info("Headers:");
+
+        Enumeration<String> headerNames = request.getHeaderNames();
+        while (headerNames.hasMoreElements()) {
+            String headerName = headerNames.nextElement();
+            log.info("  {}: {}", headerName, request.getHeader(headerName));
+        }
+        log.info("────────────────────────────────────────────────────────────────");
     }
 }
