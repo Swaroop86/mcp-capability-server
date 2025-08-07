@@ -1,0 +1,359 @@
+# PostgreSQL Java SDK Configuration
+# Location: sdk-repositories/postgresql-java-sdk/sdk-config.yaml
+
+sdk:
+  name: postgresql-java-sdk
+  version: 1.0.0
+  description: PostgreSQL integration SDK for Java Spring Boot applications
+  author: MCP Team
+  license: MIT
+  lastUpdated: 2024-01-15
+
+capability:
+  name: postgresql
+  type: database
+  subtype: relational
+  description: Full PostgreSQL database integration with JPA
+
+supported:
+  languages:
+    - name: java
+      versions: ["8", "11", "17", "21"]
+      default: "17"
+  
+  frameworks:
+    - name: spring-boot
+      versions: ["2.7.x", "3.0.x", "3.1.x", "3.2.x"]
+      default: "3.2.x"
+    - name: quarkus
+      versions: ["3.x"]
+      default: "3.x"
+    - name: micronaut
+      versions: ["4.x"]
+      default: "4.x"
+
+features:
+  standard:
+    - crud-operations
+    - pagination
+    - sorting
+    - filtering
+    - transactions
+    - connection-pooling
+  
+  optional:
+    - migrations
+    - multi-tenancy
+    - caching
+    - audit-logging
+    - soft-delete
+    - optimistic-locking
+    - json-support
+    - full-text-search
+    - custom-queries
+    - specifications
+    - projections
+
+type-mappings:
+  # PostgreSQL to Java type mappings
+  sql-to-java:
+    # Numeric types
+    SMALLINT: Short
+    INTEGER: Integer
+    INT: Integer
+    BIGINT: Long
+    DECIMAL: BigDecimal
+    NUMERIC: BigDecimal
+    REAL: Float
+    FLOAT: Float
+    DOUBLE PRECISION: Double
+    SERIAL: Integer
+    BIGSERIAL: Long
+    
+    # Character types
+    VARCHAR: String
+    CHAR: String
+    TEXT: String
+    CHARACTER VARYING: String
+    CHARACTER: String
+    
+    # Binary types
+    BYTEA: byte[]
+    BLOB: byte[]
+    
+    # Date/Time types
+    DATE: LocalDate
+    TIME: LocalTime
+    TIMESTAMP: LocalDateTime
+    TIMESTAMPTZ: OffsetDateTime
+    TIMESTAMP WITH TIME ZONE: OffsetDateTime
+    TIMESTAMP WITHOUT TIME ZONE: LocalDateTime
+    INTERVAL: Duration
+    
+    # Boolean
+    BOOLEAN: Boolean
+    BOOL: Boolean
+    
+    # UUID
+    UUID: UUID
+    
+    # JSON types
+    JSON: String
+    JSONB: String
+    
+    # Arrays (basic)
+    INTEGER[]: List<Integer>
+    VARCHAR[]: List<String>
+    TEXT[]: List<String>
+    BIGINT[]: List<Long>
+    
+    # Geometric types
+    POINT: String
+    LINE: String
+    POLYGON: String
+    
+    # Network types
+    INET: String
+    CIDR: String
+    MACADDR: String
+
+  # Java import requirements
+  java-imports:
+    BigDecimal: java.math.BigDecimal
+    LocalDate: java.time.LocalDate
+    LocalTime: java.time.LocalTime
+    LocalDateTime: java.time.LocalDateTime
+    OffsetDateTime: java.time.OffsetDateTime
+    Duration: java.time.Duration
+    UUID: java.util.UUID
+    List: java.util.List
+    Set: java.util.Set
+    Map: java.util.Map
+
+templates:
+  entity:
+    - name: base-entity
+      file: templates/entity/base-entity.ftl
+      description: Basic JPA entity
+      
+    - name: auditable-entity
+      file: templates/entity/auditable-entity.ftl
+      description: Entity with audit fields
+      requires: [audit-logging]
+      
+    - name: soft-delete-entity
+      file: templates/entity/soft-delete-entity.ftl
+      description: Entity with soft delete support
+      requires: [soft-delete]
+  
+  repository:
+    - name: jpa-repository
+      file: templates/repository/jpa-repository.ftl
+      description: Spring Data JPA repository
+      
+    - name: custom-repository
+      file: templates/repository/custom-repository.ftl
+      description: Repository with custom queries
+      
+    - name: specification-repository
+      file: templates/repository/specification-repository.ftl
+      description: Repository with specifications
+      requires: [specifications]
+  
+  service:
+    - name: crud-service
+      file: templates/service/crud-service.ftl
+      description: Basic CRUD service
+      
+    - name: transactional-service
+      file: templates/service/transactional-service.ftl
+      description: Service with transaction management
+      
+    - name: cached-service
+      file: templates/service/cached-service.ftl
+      description: Service with caching support
+      requires: [caching]
+  
+  controller:
+    - name: rest-controller
+      file: templates/controller/rest-controller.ftl
+      description: RESTful API controller
+      
+    - name: pageable-controller
+      file: templates/controller/pageable-controller.ftl
+      description: Controller with pagination
+      requires: [pagination]
+  
+  dto:
+    - name: request-dto
+      file: templates/dto/request-dto.ftl
+      description: Request DTO
+      
+    - name: response-dto
+      file: templates/dto/response-dto.ftl
+      description: Response DTO
+      
+    - name: mapper
+      file: templates/dto/mapper.ftl
+      description: DTO mapper using MapStruct
+
+dependencies:
+  required:
+    - groupId: org.springframework.boot
+      artifactId: spring-boot-starter-data-jpa
+      scope: compile
+      description: JPA and Hibernate support
+    
+    - groupId: org.postgresql
+      artifactId: postgresql
+      version: 42.7.1
+      scope: runtime
+      description: PostgreSQL JDBC driver
+  
+  optional:
+    - groupId: org.springframework.boot
+      artifactId: spring-boot-starter-validation
+      scope: compile
+      description: Bean validation support
+      when: [validation]
+    
+    - groupId: com.vladmihalcea
+      artifactId: hibernate-types-60
+      version: 2.21.1
+      scope: compile
+      description: Additional Hibernate types for PostgreSQL
+      when: [json-support]
+    
+    - groupId: org.flywaydb
+      artifactId: flyway-core
+      scope: compile
+      description: Database migrations
+      when: [migrations]
+    
+    - groupId: org.liquibase
+      artifactId: liquibase-core
+      scope: compile
+      description: Database migrations alternative
+      when: [migrations]
+    
+    - groupId: org.springframework.boot
+      artifactId: spring-boot-starter-cache
+      scope: compile
+      description: Caching support
+      when: [caching]
+    
+    - groupId: com.github.ben-manes.caffeine
+      artifactId: caffeine
+      version: 3.1.8
+      scope: compile
+      description: High performance caching
+      when: [caching]
+    
+    - groupId: org.mapstruct
+      artifactId: mapstruct
+      version: 1.5.5.Final
+      scope: compile
+      description: DTO mapping
+      when: [dto-mapping]
+    
+    - groupId: org.projectlombok
+      artifactId: lombok
+      scope: provided
+      description: Reduce boilerplate code
+      when: [lombok]
+
+configuration:
+  application-properties:
+    # DataSource Configuration
+    spring.datasource.url: jdbc:postgresql://localhost:5432/${database.name:mydb}
+    spring.datasource.username: ${database.username:postgres}
+    spring.datasource.password: ${database.password:password}
+    spring.datasource.driver-class-name: org.postgresql.Driver
+    
+    # JPA Configuration
+    spring.jpa.database-platform: org.hibernate.dialect.PostgreSQLDialect
+    spring.jpa.hibernate.ddl-auto: ${jpa.ddl-auto:validate}
+    spring.jpa.show-sql: ${jpa.show-sql:false}
+    spring.jpa.properties.hibernate.format_sql: true
+    spring.jpa.properties.hibernate.use_sql_comments: true
+    spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation: true
+    
+    # Connection Pool (HikariCP)
+    spring.datasource.hikari.maximum-pool-size: ${pool.max-size:10}
+    spring.datasource.hikari.minimum-idle: ${pool.min-idle:5}
+    spring.datasource.hikari.idle-timeout: ${pool.idle-timeout:300000}
+    spring.datasource.hikari.connection-timeout: ${pool.connection-timeout:30000}
+    spring.datasource.hikari.max-lifetime: ${pool.max-lifetime:1800000}
+    
+    # Hibernate Performance
+    spring.jpa.properties.hibernate.jdbc.batch_size: 25
+    spring.jpa.properties.hibernate.order_inserts: true
+    spring.jpa.properties.hibernate.order_updates: true
+    spring.jpa.properties.hibernate.jdbc.batch_versioned_data: true
+    
+    # Second Level Cache (if enabled)
+    spring.jpa.properties.hibernate.cache.use_second_level_cache: false
+    spring.jpa.properties.hibernate.cache.region.factory_class: org.hibernate.cache.jcache.internal.JCacheRegionFactory
+    
+    # Query Cache (if enabled)
+    spring.jpa.properties.hibernate.cache.use_query_cache: false
+
+generation-rules:
+  naming:
+    entity:
+      pattern: ${TableName}
+      example: User, Product, Order
+    
+    repository:
+      pattern: ${EntityName}Repository
+      example: UserRepository, ProductRepository
+    
+    service:
+      pattern: ${EntityName}Service
+      example: UserService, ProductService
+    
+    service-impl:
+      pattern: ${EntityName}ServiceImpl
+      example: UserServiceImpl, ProductServiceImpl
+    
+    controller:
+      pattern: ${EntityName}Controller
+      example: UserController, ProductController
+    
+    dto:
+      request: ${EntityName}Request
+      response: ${EntityName}Response
+      create: Create${EntityName}Request
+      update: Update${EntityName}Request
+    
+    mapper:
+      pattern: ${EntityName}Mapper
+      example: UserMapper, ProductMapper
+  
+  packages:
+    base: ${project.base.package}
+    entity: ${base}.entity
+    repository: ${base}.repository
+    service: ${base}.service
+    service.impl: ${base}.service.impl
+    controller: ${base}.controller
+    dto: ${base}.dto
+    dto.request: ${base}.dto.request
+    dto.response: ${base}.dto.response
+    mapper: ${base}.mapper
+    config: ${base}.config
+    exception: ${base}.exception
+    util: ${base}.util
+
+validation-rules:
+  entity:
+    - Primary key required
+    - Table name must be provided
+    - At least one field required
+    - Field names must be valid Java identifiers
+    - No duplicate field names
+  
+  relationships:
+    - Foreign key must reference existing table
+    - Relationship type must be valid (OneToOne, OneToMany, ManyToOne, ManyToMany)
+    - Mapped by field must exist in target entity

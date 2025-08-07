@@ -1,0 +1,38 @@
+2025-08-06 17:10:22 [restartedMain] INFO  com.mcp.server.McpServerApplication - Starting McpServerApplication using Java 21.0.8 with PID 42155 (/Users/bhavyanarayanappa/Documents/capability-intgeration-poc/mcp-capability-server/target/classes started by bhavyanarayanappa in /Users/bhavyanarayanappa/Documents/capability-intgeration-poc/mcp-capability-server)
+2025-08-06 17:10:22 [restartedMain] DEBUG com.mcp.server.McpServerApplication - Running with Spring Boot v3.3.5, Spring v6.1.14
+2025-08-06 17:10:22 [restartedMain] INFO  com.mcp.server.McpServerApplication - No active profile set, falling back to 1 default profile: "default"
+2025-08-06 17:10:22 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2025-08-06 17:10:22 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2025-08-06 17:10:23 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2025-08-06 17:10:23 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2025-08-06 17:10:23 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.31]
+2025-08-06 17:10:23 [restartedMain] INFO  o.a.c.c.C.[.[localhost].[/mcp] - Initializing Spring embedded WebApplicationContext
+2025-08-06 17:10:23 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 508 ms
+2025-08-06 17:10:23 [restartedMain] INFO  com.mcp.server.config.McpConfig - CORS configuration enabled for MCP endpoints
+2025-08-06 17:10:23 [restartedMain] INFO  com.mcp.server.config.CacheConfig - Cache configuration initialized:
+2025-08-06 17:10:23 [restartedMain] INFO  com.mcp.server.config.CacheConfig -   Plan expiration: 10 minutes
+2025-08-06 17:10:23 [restartedMain] INFO  com.mcp.server.config.CacheConfig -   Max cached plans: 100
+2025-08-06 17:10:23 [restartedMain] WARN  o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'cacheConfig': Invocation of init method failed
+2025-08-06 17:10:23 [restartedMain] INFO  o.a.catalina.core.StandardService - Stopping service [Tomcat]
+2025-08-06 17:10:23 [restartedMain] INFO  o.s.b.a.l.ConditionEvaluationReportLogger - 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2025-08-06 17:10:23 [restartedMain] ERROR o.s.b.d.LoggingFailureAnalysisReporter - 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+The dependencies of some of the beans in the application context form a cycle:
+
+┌──->──┐
+|  cacheConfig
+└──<-──┘
+
+
+Action:
+
+Relying upon circular references is discouraged and they are prohibited by default. Update your application to remove the dependency cycle between beans. As a last resort, it may be possible to break the cycle automatically by setting spring.main.allow-circular-references to true.
+

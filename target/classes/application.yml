@@ -44,12 +44,12 @@ mcp:
       - code-generation
 
   sdk:
-    base-path: /opt/mcp-resources/sdk-repositories
+    base-path: ./sdk-repositories
     cache-enabled: true
     default-sdk: postgresql-java-sdk
 
   standards:
-    base-path: /opt/mcp-resources/coding-standards
+    base-path: ./coding-standards
     default-standard: java-spring-boot
 
   generation:

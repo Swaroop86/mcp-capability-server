@@ -34,6 +34,7 @@ com/mcp/server/model/PlanOptions$PlanOptionsBuilder.class
 com/mcp/server/model/Action$ActionBuilder.class
 com/mcp/server/config/McpKeyGenerator.class
 com/mcp/server/model/PlanResponse$PlanResponseBuilder.class
+com/mcp/server/exception/ResourceNotFoundException.class
 com/mcp/server/model/PlanRequest.class
 com/mcp/server/model/ForeignKey.class
 com/mcp/server/model/Action.class
@@ -85,6 +86,7 @@ com/mcp/server/model/CustomOption$CustomOptionBuilder.class
 com/mcp/server/config/SdkRepositoryConfig$SdkRepositoryConfigBuilder.class
 com/mcp/server/model/CompatibilityCheck.class
 com/mcp/server/model/ProjectInfo.class
+com/mcp/server/exception/BusinessException.class
 com/mcp/server/model/PlanStatus.class
 com/mcp/server/model/ProjectContext$ProjectContextBuilder.class
 com/mcp/server/model/DatabaseSchema$DatabaseSchemaBuilder.class
