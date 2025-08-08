@@ -638,10 +638,6 @@ codeforge-mcp diagnose --output report.json
 codeforge-mcp update --check
 ```
 
-## 📄 License
-
-MIT License - Free for commercial and personal use.
-
 ---
 
 <div align="center">
