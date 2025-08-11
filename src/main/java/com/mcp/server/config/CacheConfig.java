@@ -18,8 +18,8 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Cache Configuration using Caffeine with extended expiration times
- * Fixed to avoid circular dependencies
+ * Cache Configuration using Caffeine with reduced caching
+ * FIXED: Removed template caching to avoid state persistence
  */
 @Configuration
 @EnableCaching
@@ -30,11 +30,11 @@ public class CacheConfig {
     @Value("${mcp.plan.expiration-minutes:120}")
     private int planExpirationMinutes;
 
-    @Value("${mcp.plan.max-cached-plans:1000}")
+    @Value("${mcp.plan.max-cached-plans:100}")
     private int maxCachedPlans;
 
     /**
-     * Primary cache manager with multiple caches
+     * Primary cache manager with limited caches
      */
     @Bean
     @Primary
@@ -42,19 +42,19 @@ public class CacheConfig {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
 
         // Configure different caches with specific settings
+        // REMOVED "templates" from cache list
         cacheManager.setCacheNames(Arrays.asList(
                 "plans",           // Integration plans
-                "templates",       // Compiled templates
                 "sdk-configs",     // SDK configurations
                 "project-context", // Analyzed project contexts
                 "standards"        // Coding standards
         ));
 
-        // Set default cache configuration
+        // Set default cache configuration with shorter TTL
         cacheManager.setCaffeine(Caffeine.newBuilder()
-                .maximumSize(1000)
-                .expireAfterWrite(2, TimeUnit.HOURS)
-                .initialCapacity(100)
+                .maximumSize(100)  // Reduced from 1000
+                .expireAfterWrite(5, TimeUnit.MINUTES)  // Reduced from 2 hours
+                .initialCapacity(10)
                 .recordStats());
 
         log.info("Cache manager configured with caches: {}", cacheManager.getCacheNames());
@@ -70,6 +70,9 @@ public class CacheConfig {
             StringBuilder key = new StringBuilder();
             key.append(target.getClass().getSimpleName()).append(":");
             key.append(method.getName()).append(":");
+
+            // Add timestamp to make keys more unique
+            key.append(System.currentTimeMillis()).append(":");
 
             for (Object param : params) {
                 if (param != null) {
@@ -90,18 +93,15 @@ public class CacheConfig {
      */
     @Scheduled(fixedDelay = 300000) // 5 minutes
     public void logCacheStatistics() {
-        // This method will only work if we can access the cache manager
-        // We'll log basic info for now
         log.debug("Cache statistics logging triggered");
     }
 
     /**
-     * Clear expired plans - runs every 2 hours (matching expiration)
+     * Clear expired plans - runs every 30 minutes
      */
-    @Scheduled(fixedDelay = 7200000) // 2 hours
+    @Scheduled(fixedDelay = 1800000) // 30 minutes
     public void cleanupExpiredPlans() {
         log.debug("Running cache cleanup for expired plans");
-        // Cache cleanup will be handled by Caffeine's expiration policy
     }
 
     @PostConstruct
@@ -109,5 +109,6 @@ public class CacheConfig {
         log.info("Cache configuration initialized:");
         log.info("  Plan expiration: {} minutes", planExpirationMinutes);
         log.info("  Max cached plans: {}", maxCachedPlans);
+        log.info("  Template caching: DISABLED");
     }
 }

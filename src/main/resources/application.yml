@@ -7,17 +7,9 @@ spring:
   application:
     name: mcp-server-postgresql
 
-  # Cache configuration with extended expiration
+  # Disable caching for development/demo
   cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=120m
-    cache-names:
-      - plans
-      - templates
-      - sdk-configs
-      - project-context
-      - standards
+    type: none  # Disable all caching for demo
 
   # Jackson configuration
   jackson:
@@ -28,12 +20,14 @@ spring:
     deserialization:
       fail-on-unknown-properties: false
 
-  # Freemarker configuration
+  # Freemarker configuration - DISABLE CACHING
   freemarker:
     template-loader-path: classpath:/templates/
     charset: UTF-8
-    cache: true
+    cache: false  # Disable template caching
     suffix: .ftl
+    prefer-file-system-access: false
+    template-update-delay: 0
 
 # MCP Server Configuration
 mcp:
@@ -47,7 +41,7 @@ mcp:
 
   sdk:
     base-path: ./sdk-repositories
-    cache-enabled: true
+    cache-enabled: false  # Disable SDK caching
     default-sdk: postgresql-java-sdk
 
   standards:
@@ -62,8 +56,8 @@ mcp:
     naming-strategy: snake_case
 
   plan:
-    expiration-minutes: 120  # Extended to 2 hours
-    max-cached-plans: 1000
+    expiration-minutes: 120
+    max-cached-plans: 100
 
 # Logging configuration with enhanced debugging
 logging:
@@ -92,3 +86,5 @@ management:
   endpoint:
     health:
       show-details: always
+    caches:
+      enabled: true

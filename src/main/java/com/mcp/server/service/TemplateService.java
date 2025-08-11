@@ -4,18 +4,24 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateExceptionHandler;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 
 import jakarta.annotation.PostConstruct;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.UUID;
 
 /**
  * Service for processing Freemarker templates
+ * FIXED: Clear template cache between executions
  */
 @Service
+@Scope(value = "prototype", proxyMode = ScopedProxyMode.TARGET_CLASS)
 @Slf4j
 public class TemplateService {
 
@@ -32,41 +38,62 @@ public class TemplateService {
         freemarkerConfig.setLogTemplateExceptions(false);
         freemarkerConfig.setWrapUncheckedExceptions(true);
 
+        // IMPORTANT: Don't cache templates
+        freemarkerConfig.setCacheStorage(new freemarker.cache.NullCacheStorage());
+        freemarkerConfig.setTemplateUpdateDelayMilliseconds(0);
+
         // Initialize in-memory templates
         initializeTemplates();
     }
 
     /**
-     * Process template with variables
+     * Process template with variables - FIXED to create fresh instances
      */
-    @Cacheable(value = "templates", key = "#templateName")
     public String processTemplate(String templateName, Map<String, Object> variables) {
         try {
+            // CRITICAL: Create a deep copy of variables to avoid contamination
+            Map<String, Object> cleanVariables = new HashMap<>();
+            if (variables != null) {
+                variables.forEach((key, value) -> {
+                    if (value instanceof Map) {
+                        cleanVariables.put(key, new HashMap<>((Map<?, ?>) value));
+                    } else if (value instanceof List) {
+                        cleanVariables.put(key, new ArrayList<>((List<?>) value));
+                    } else {
+                        cleanVariables.put(key, value);
+                    }
+                });
+            }
+
+            // Clear any cached templates
+            freemarkerConfig.clearTemplateCache();
+
             // Use in-memory template if available
             String templateContent = inMemoryTemplates.get(templateName);
             if (templateContent != null) {
-                return processInMemoryTemplate(templateContent, variables);
+                return processInMemoryTemplate(templateContent, cleanVariables);
             }
 
             // Otherwise load from file system
             Template template = freemarkerConfig.getTemplate(templateName + ".ftl");
             StringWriter writer = new StringWriter();
-            template.process(variables, writer);
+            template.process(cleanVariables, writer);
             return writer.toString();
 
         } catch (Exception e) {
             log.error("Error processing template {}: ", templateName, e);
-            // Return a basic template as fallback
             return generateFallbackTemplate(templateName, variables);
         }
     }
 
     /**
-     * Process in-memory template
+     * Process in-memory template - FIXED to use fresh template instance
      */
     private String processInMemoryTemplate(String templateContent, Map<String, Object> variables) {
         try {
-            Template template = new Template("temp", templateContent, freemarkerConfig);
+            // CRITICAL: Create new template instance each time
+            String uniqueName = "temp_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId();
+            Template template = new Template(uniqueName, templateContent, freemarkerConfig);
             StringWriter writer = new StringWriter();
             template.process(variables, writer);
             return writer.toString();
@@ -77,7 +104,7 @@ public class TemplateService {
     }
 
     /**
-     * Initialize in-memory templates
+     * Initialize in-memory templates - RECREATED each time to avoid caching
      */
     private void initializeTemplates() {
         inMemoryTemplates = new HashMap<>();
@@ -430,5 +457,14 @@ public class TemplateService {
                 variables.get("apiPath"),
                 variables.get("controllerName")
         );
+    }
+
+    /**
+     * Clear all template caches
+     */
+    public void clearCache() {
+        freemarkerConfig.clearTemplateCache();
+        initializeTemplates(); // Reinitialize templates
+        log.info("Template cache cleared");
     }
 }
